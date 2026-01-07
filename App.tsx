@@ -1,4 +1,4 @@
-import { SpeedInsights } from '@vercel/speed-insights/next';
+
  
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types';
