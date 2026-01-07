@@ -74,7 +74,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="w-full border-t border-gray-700 my-4"></div>
-          <p className="text-sm opacity-60 text-center">&copy; 2024 FoodBridge. Sharing Food, Sharing Hope.</p>
+          <p className="text-sm opacity-60 text-center">&copy; 2025 FoodBridge. Sharing Food, Sharing Hope.</p>
         </div>
       </footer>
     </div>
