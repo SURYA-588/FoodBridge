@@ -35,7 +35,7 @@ const BrowseFood: React.FC<BrowseProps> = ({ user, onNavigate }) => {
     setLoadingAi(true);
     const postSummary = posts.map(p => `${p.foodItems} (${p.quantity} ppl) at ${p.district}, expires ${p.expiryTime}`).join('; ');
     const result = await geminiService.suggestCollectionPriority(postSummary);
-    setRecommendations(result);
+    setRecommendations(result || '');
     setLoadingAi(false);
   };
 

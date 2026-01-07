@@ -1,5 +1,4 @@
 
- 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types';
 import { mockApi } from './services/mockApi';
@@ -61,7 +60,6 @@ const App: React.FC = () => {
       )}
       <main className="flex-grow">
         {renderPage()}
-        
       </main>
       <footer className="bg-gray-800 text-white py-10 px-4">
         <div className="max-w-7xl mx-auto flex flex-col items-center space-y-4">
