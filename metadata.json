@@ -1,0 +1,7 @@
+{
+  "name": "FoodBridge",
+  "description": "A comprehensive platform connecting hotels and event organizers with NGOs to reduce food waste and provide meals to those in need. Features include real-time food posting, district-wise search, collection management, and AI-driven impact analytics.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
