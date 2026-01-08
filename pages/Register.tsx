@@ -1,6 +1,4 @@
-
 import React, { useState } from 'react';
-// Fix: DISTRICTS is defined in constants.tsx, not types.ts
 import { UserRole } from '../types';
 import { DISTRICTS } from '../constants';
 import { mockApi } from '../services/mockApi';
@@ -14,6 +12,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onNavigate }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     role: UserRole.PROVIDER,
     organization: '',
     phone: '',
@@ -27,7 +26,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-8">
           <h2 className="text-4xl font-extrabold text-gray-900">Create Account</h2>
@@ -58,7 +57,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onNavigate }) => {
           </div>
 
           <div className="md:col-span-3 p-10">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" id="register-form">
               <div className="flex space-x-4 mb-6">
                 <button 
                   type="button"
@@ -78,30 +77,34 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onNavigate }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="John Doe" />
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input id="name" name="name" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="John Doe" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="john@example.com" />
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input id="email" name="email" required type="email" autoComplete="username" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="john@example.com" />
+                </div>
+                <div className="col-span-2">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input id="password" name="password" required type="password" autoComplete="new-password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="••••••••" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <input required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="9876543210" />
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input id="phone" name="phone" required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="9876543210" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                  <select value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
+                  <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-1">District</label>
+                  <select id="district" name="district" value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none">
                     {DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
-                  <input required value={formData.organization} onChange={e => setFormData({...formData, organization: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Hotel Hyatt / Helping Hands NGO" />
+                  <label htmlFor="organization" className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
+                  <input id="organization" name="organization" required value={formData.organization} onChange={e => setFormData({...formData, organization: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Hotel Hyatt / Helping Hands NGO" />
                 </div>
               </div>
 
-              <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all mt-4">
+              <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all mt-4 active:scale-95">
                 Create Account
               </button>
             </form>
@@ -111,6 +114,16 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onNavigate }) => {
             </p>
           </div>
         </div>
+
+        <button 
+          onClick={() => onNavigate('home')}
+          className="mt-8 flex items-center justify-center w-full text-gray-500 hover:text-gray-700 font-medium transition-colors"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Home
+        </button>
       </div>
     </div>
   );

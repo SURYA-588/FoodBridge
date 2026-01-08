@@ -1,4 +1,3 @@
-
 import { User, FoodPost, UserRole, PostStatus, FoodType } from '../types';
 
 // Storage keys for local persistence
@@ -8,14 +7,16 @@ const AUTH_KEY = 'fsc_auth';
 
 export const mockApi = {
   // Auth
-  register: (userData: Partial<User>) => {
+  register: (userData: Partial<User & { password?: string }>) => {
     const users = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
     const newUser = {
       ...userData,
       id: Math.random().toString(36).substr(2, 9),
       isVerified: userData.role === UserRole.ADMIN,
     } as User;
-    users.push(newUser);
+    
+    // In a real app, we'd hash the password.
+    users.push({ ...newUser, password: userData.password });
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
     return newUser;
   },

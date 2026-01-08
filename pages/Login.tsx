@@ -16,6 +16,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // In this mock, any password works if the email exists
       const user = mockApi.login(email);
       onLogin(user);
     } catch (err) {
@@ -28,7 +29,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
           <div className="mb-6 flex justify-center">
-            <span className="text-5xl font-black text-gray-900 tracking-tighter">
+            <span className="text-5xl font-black text-gray-900 tracking-tighter cursor-pointer" onClick={() => onNavigate('home')}>
               Food<span className="text-green-600">Bridge</span>
             </span>
           </div>
@@ -37,16 +38,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" id="login-form">
             {error && (
               <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
                 {error}
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
               <input 
+                id="email"
+                name="username" 
                 type="email" 
+                autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -55,9 +59,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input 
+                id="password"
+                name="password"
                 type="password" 
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -67,7 +74,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
             </div>
             <button 
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-95"
             >
               Sign In
             </button>
@@ -88,7 +95,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
         
         <button 
           onClick={() => onNavigate('home')}
-          className="mt-8 flex items-center justify-center w-full text-gray-500 hover:text-gray-700 font-medium"
+          className="mt-8 flex items-center justify-center w-full text-gray-500 hover:text-gray-700 font-medium transition-colors"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
           Back to Home
