@@ -25,6 +25,7 @@ export interface User {
   organization?: string;
   phone?: string;
   isVerified: boolean;
+  token?: string; // JWT Token
 }
 
 export interface FoodPost {
@@ -33,10 +34,10 @@ export interface FoodPost {
   providerName: string;
   foodItems: string;
   type: FoodType;
-  quantity: number; // For number of people
+  quantity: number;
   district: string;
   location: string;
-  expiryTime: string; // ISO String
+  expiryTime: string;
   contactNumber: string;
   status: PostStatus;
   ngoId?: string;
@@ -45,12 +46,9 @@ export interface FoodPost {
   createdAt: string;
 }
 
-export interface CollectionRequest {
-  id: string;
-  postId: string;
-  ngoId: string;
-  status: 'pending' | 'approved' | 'completed';
-  timestamp: string;
+export interface AuthResponse {
+  user: User;
+  token: string;
 }
 
 export interface DashboardStats {

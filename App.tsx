@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from './types';
-import { mockApi } from './services/mockApi';
+import { apiService } from './services/api';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -15,33 +15,74 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>('home');
   const [loading, setLoading] = useState(true);
 
+  // Persistent Login: Check for authToken on load
   useEffect(() => {
-    const user = mockApi.getCurrentUser();
-    setCurrentUser(user);
-    setLoading(false);
+    const checkAuth = async () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          // Validate token with simulated backend
+          const user = await apiService.verifyToken(token);
+          setCurrentUser(user);
+          
+          // Auto-navigate to dashboard if user is logged in and currently on a guest page
+          setCurrentPage(prev => {
+            if (prev === 'home' || prev === 'login' || prev === 'register') {
+              return 'dashboard';
+            }
+            return prev;
+          });
+          
+          console.log(`[Auth] Persistent session restored for: ${user.email}`);
+        } catch (err) {
+          console.warn("[Auth] Session invalid or expired. Clearing token.");
+          localStorage.removeItem('authToken');
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const handleLogout = () => {
-    mockApi.logout();
+    apiService.logout();
     setCurrentUser(null);
     setCurrentPage('home');
   };
 
-  if (loading) return <div className="flex h-screen items-center justify-center text-green-600 font-bold text-xl animate-pulse">Loading FoodBridge...</div>;
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    setCurrentPage('dashboard');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4"></div>
+          <span className="text-green-700 font-bold text-xl tracking-tighter">FoodBridge</span>
+          <p className="text-gray-400 text-sm mt-2 animate-pulse">Restoring your session...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
         return <Landing onNavigate={setCurrentPage} />;
       case 'login':
-        return <Login onLogin={(user) => { setCurrentUser(user); setCurrentPage('dashboard'); }} onNavigate={setCurrentPage} />;
+        return <Login onLogin={handleLoginSuccess} onNavigate={setCurrentPage} />;
       case 'register':
         return <Register onRegister={() => setCurrentPage('login')} onNavigate={setCurrentPage} />;
       case 'dashboard':
-        if (currentUser?.role === UserRole.ADMIN) return <AdminDashboard user={currentUser} />;
-        return <Dashboard user={currentUser!} onNavigate={setCurrentPage} />;
+        if (!currentUser) { setCurrentPage('login'); return null; }
+        if (currentUser.role === UserRole.ADMIN) return <AdminDashboard user={currentUser} />;
+        return <Dashboard user={currentUser} onNavigate={setCurrentPage} />;
       case 'browse':
-        return <BrowseFood user={currentUser!} onNavigate={setCurrentPage} />;
+        if (!currentUser) { setCurrentPage('login'); return null; }
+        return <BrowseFood user={currentUser} onNavigate={setCurrentPage} />;
       default:
         return <Landing onNavigate={setCurrentPage} />;
     }
@@ -49,7 +90,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Show Navbar on Home and App pages, hide on Login/Register for cleaner focus */}
       {currentPage !== 'login' && currentPage !== 'register' && (
         <Navbar 
           user={currentUser} 

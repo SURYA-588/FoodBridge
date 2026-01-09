@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, FoodPost, PostStatus, FoodType } from '../types';
-import { mockApi } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { geminiService } from '../services/gemini';
 import FoodCard from '../components/FoodCard';
 import { DISTRICTS } from '../constants';
@@ -22,8 +22,8 @@ const BrowseFood: React.FC<BrowseProps> = ({ user, onNavigate }) => {
     loadData();
   }, [filterDistrict, filterType]);
 
-  const loadData = () => {
-    const data = mockApi.getPosts({ 
+  const loadData = async () => {
+    const data = await apiService.getAllFood({ 
       district: filterDistrict || undefined, 
       type: filterType || undefined,
       status: PostStatus.AVAILABLE 
@@ -35,23 +35,23 @@ const BrowseFood: React.FC<BrowseProps> = ({ user, onNavigate }) => {
     setLoadingAi(true);
     const postSummary = posts.map(p => `${p.foodItems} (${p.quantity} ppl) at ${p.district}, expires ${p.expiryTime}`).join('; ');
     const result = await geminiService.suggestCollectionPriority(postSummary);
-    setRecommendations(result || '');
+    setRecommendations(result);
     setLoadingAi(false);
   };
 
-  const handleCollect = (postId: string) => {
-    if (window.confirm('Do you want to confirm collection of this batch?')) {
-      mockApi.collectPost(postId, user.id, user.organization || user.name);
+  const handleCollect = async (postId: string) => {
+    if (window.confirm('Confirm collection for this food batch?')) {
+      await apiService.collectPost(postId, user.id, user.organization || user.name);
       loadData();
-      alert('Success! Please coordinate with the provider immediately.');
+      alert('Collection confirmed! Please contact the provider now.');
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Food Near You</h1>
-        <p className="text-gray-600 italic">Browse available surplus food batches and collect to distribute.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Surplus Food Near You</h1>
+        <p className="text-gray-600">NGOs can claim these batches for immediate distribution.</p>
       </div>
 
       {/* Filters */}
@@ -90,7 +90,7 @@ const BrowseFood: React.FC<BrowseProps> = ({ user, onNavigate }) => {
                 disabled={loadingAi}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 disabled:opacity-50"
               >
-                {loadingAi ? 'Calculating...' : 'Get Best Route Recommendation'}
+                {loadingAi ? 'Calculating...' : 'Get Route Suggestion'}
               </button>
             )}
           </div>
@@ -105,8 +105,8 @@ const BrowseFood: React.FC<BrowseProps> = ({ user, onNavigate }) => {
       {posts.length === 0 ? (
         <div className="bg-white rounded-3xl p-20 text-center border border-gray-100 shadow-sm">
           <div className="text-5xl mb-4">📍</div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No batches available right now</h3>
-          <p className="text-gray-500">Try changing filters or checking back in an hour.</p>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No active batches available</h3>
+          <p className="text-gray-500">Check back later or try different filter settings.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { mockApi } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { User } from '../types';
 
 interface LoginProps {
@@ -11,16 +11,20 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
     try {
-      // In this mock, any password works if the email exists
-      const user = mockApi.login(email);
+      const { user } = await apiService.login(email, password);
       onLogin(user);
     } catch (err) {
-      setError('Invalid email or user not found. (Hint: Register first)');
+      setError('Invalid credentials or user not found. Please register.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -34,13 +38,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
             </span>
           </div>
           <h2 className="text-3xl font-extrabold text-gray-900">Welcome Back</h2>
-          <p className="mt-2 text-gray-600">Sign in to manage your food sharing</p>
+          <p className="mt-2 text-gray-600">Sign in for persistent access across devices</p>
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6" id="login-form">
             {error && (
-              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 animate-pulse">
                 {error}
               </div>
             )}
@@ -54,8 +58,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all disabled:opacity-50"
                 placeholder="you@organization.com"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -68,15 +73,17 @@ const Login: React.FC<LoginProps> = ({ onLogin, onNavigate }) => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none transition-all disabled:opacity-50"
                 placeholder="••••••••"
+                disabled={isLoading}
               />
             </div>
             <button 
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-95"
+              disabled={isLoading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg active:scale-95 disabled:bg-gray-400"
             >
-              Sign In
+              {isLoading ? 'Verifying...' : 'Sign In'}
             </button>
           </form>
           

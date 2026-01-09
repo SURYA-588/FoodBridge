@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, FoodPost, UserRole, FoodType, PostStatus } from '../types';
-import { mockApi } from '../services/mockApi';
+import { apiService } from '../services/api';
 import { geminiService } from '../services/gemini';
 import FoodCard from '../components/FoodCard';
 import { DISTRICTS } from '../constants';
@@ -14,7 +14,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   const [posts, setPosts] = useState<FoodPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [stats, setStats] = useState(mockApi.getStats());
+  const [stats, setStats] = useState({ totalMealsServed: 0, activeDonations: 0, totalDonors: 0, activeNGOs: 0 });
   const [aiInsight, setAiInsight] = useState('Loading insights...');
   const [newPost, setNewPost] = useState({
     foodItems: '',
@@ -28,28 +28,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
 
   useEffect(() => {
     refreshData();
-    loadImpactInsight();
   }, []);
 
-  const refreshData = () => {
-    const allPosts = mockApi.getPosts();
+  const refreshData = async () => {
+    const allPosts = await apiService.getAllFood();
+    const currentStats = await apiService.getStats();
+    
     if (user.role === UserRole.PROVIDER) {
       setPosts(allPosts.filter(p => p.providerId === user.id));
     } else {
       setPosts(allPosts.filter(p => p.ngoId === user.id));
     }
-    setStats(mockApi.getStats());
+    setStats(currentStats);
+    loadImpactInsight(currentStats);
   };
 
-  const loadImpactInsight = async () => {
-    const s = mockApi.getStats();
+  const loadImpactInsight = async (s: any) => {
     const insight = await geminiService.generateImpactInsight(s.totalMealsServed, s.totalMealsServed * 0.4);
-    setAiInsight(insight || 'Loading insights...');
+    setAiInsight(insight);
   };
 
-  const handleAddPost = (e: React.FormEvent) => {
+  const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    mockApi.addPost({
+    await apiService.createPost({
       ...newPost,
       providerId: user.id,
       providerName: user.organization || user.name,
@@ -68,9 +69,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
     });
   };
 
-  const handleDeletePost = (postId: string) => {
+  const handleDeletePost = async (postId: string) => {
     if (window.confirm('Are you sure you want to remove this post?')) {
-      mockApi.deletePost(postId);
+      await apiService.deletePost(postId);
       refreshData();
     }
   };
@@ -81,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       <div className="mb-10 bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">Hello, {user.name}!</h1>
+            <h1 className="text-3xl font-bold mb-2">Hello, {user.name.split(' ')[0]}!</h1>
             <p className="text-green-50 text-lg opacity-90 max-w-2xl italic">
               " {aiInsight} "
             </p>
@@ -125,7 +126,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       {posts.length === 0 ? (
         <div className="bg-white rounded-2xl border-2 border-dashed border-gray-200 p-20 text-center">
           <div className="text-6xl mb-4">🍽️</div>
-          <p className="text-xl text-gray-500 mb-6">No {user.role === UserRole.PROVIDER ? 'posts' : 'collections'} found yet.</p>
+          <p className="text-xl text-gray-500 mb-6">No {user.role === UserRole.PROVIDER ? 'active posts' : 'collections'} found.</p>
           {user.role === UserRole.PROVIDER && (
              <button onClick={() => setShowAddModal(true)} className="text-green-600 font-bold border-b-2 border-green-600 pb-1">Create your first post</button>
           )}
@@ -146,7 +147,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       {/* Add Food Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-8">
+          <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">Post Surplus Food</h3>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
@@ -157,8 +158,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             <form onSubmit={handleAddPost} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Food Items (e.g., Rice, Dal, 10 Curries)</label>
-                  <input required value={newPost.foodItems} onChange={e => setNewPost({...newPost, foodItems: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Food Items</label>
+                  <input required value={newPost.foodItems} onChange={e => setNewPost({...newPost, foodItems: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Rice, Vegetable Curry, etc." />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -168,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity (for persons)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity (Persons)</label>
                   <input type="number" required value={newPost.quantity} onChange={e => setNewPost({...newPost, quantity: parseInt(e.target.value)})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
                 <div>
@@ -178,12 +179,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </select>
                 </div>
                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Available Till (Time)</label>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Available Till</label>
                    <input type="datetime-local" required value={newPost.expiryTime} onChange={e => setNewPost({...newPost, expiryTime: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Exact Location / Address</label>
-                  <textarea rows={2} required value={newPost.location} onChange={e => setNewPost({...newPost, location: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Landmark, Building name, Floor..."></textarea>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Address</label>
+                  <textarea rows={2} required value={newPost.location} onChange={e => setNewPost({...newPost, location: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none" placeholder="Detailed address for pickup..."></textarea>
                 </div>
               </div>
 
