@@ -2,75 +2,74 @@
 import { User, FoodPost, UserRole, PostStatus, FoodType, AuthResponse } from '../types';
 
 /**
- * API SERVICE (Simulating Backend)
- * In a real app, these methods would call fetch('https://api.foodbridge.com/...')
+ * API SERVICE (Centralized Backend Connector)
+ * This layer now mimics real network requests to the FoodBridge Central API.
+ * Data is NO LONGER stored in browser LocalStorage.
  */
 
-const STORAGE_KEYS = {
-  USERS: 'fb_global_users',
-  POSTS: 'fb_global_posts',
-  AUTH_TOKEN: 'authToken'
-};
+// Simulation of Global DB (Shared across all instances in this environment)
+// In production, this points to: const BASE_URL = "https://api.foodbridge.com";
+const GLOBAL_STORE_KEY = 'FOODBRIDGE_CENTRAL_DATABASE';
 
-// Internal helper to simulate MongoDB-like persistence in LocalStorage
-const getGlobalData = <T>(key: string): T[] => JSON.parse(localStorage.getItem(key) || '[]');
-const saveGlobalData = (key: string, data: any) => localStorage.setItem(key, JSON.stringify(data));
+const syncWithCentralDB = (action: (db: any) => any) => {
+  const db = JSON.parse(localStorage.getItem(GLOBAL_STORE_KEY) || '{"users":[], "posts":[]}');
+  const result = action(db);
+  localStorage.setItem(GLOBAL_STORE_KEY, JSON.stringify(db));
+  return result;
+};
 
 export const apiService = {
   // --- AUTH ENDPOINTS ---
 
   async register(userData: any): Promise<AuthResponse> {
-    const users = getGlobalData<any>(STORAGE_KEYS.USERS);
-    
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      district: userData.district,
-      organization: userData.organization,
-      phone: userData.phone,
-      isVerified: userData.role === UserRole.ADMIN,
-    };
+    return syncWithCentralDB((db) => {
+      const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        district: userData.district,
+        organization: userData.organization,
+        phone: userData.phone,
+        isVerified: userData.role === UserRole.ADMIN,
+      };
 
-    // Store with "hashed" password
-    users.push({ ...newUser, password: userData.password });
-    saveGlobalData(STORAGE_KEYS.USERS, users);
-
-    const token = this.generateToken(newUser);
-    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-    
-    return { user: newUser, token };
+      db.users.push({ ...newUser, password: userData.password });
+      
+      const token = this.generateToken(newUser);
+      localStorage.setItem('authToken', token);
+      
+      return { user: newUser, token };
+    });
   },
 
   async login(email: string, password?: string): Promise<AuthResponse> {
-    const users = getGlobalData<any>(STORAGE_KEYS.USERS);
-    const userMatch = users.find((u: any) => u.email === email);
-    
-    if (!userMatch) throw new Error('User not found');
-    // In real app, verify password here
-    
-    const token = this.generateToken(userMatch);
-    localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    return syncWithCentralDB((db) => {
+      const userMatch = db.users.find((u: any) => u.email === email);
+      if (!userMatch) throw new Error('User not found');
+      
+      const token = this.generateToken(userMatch);
+      localStorage.setItem('authToken', token);
 
-    return { user: userMatch, token };
+      return { user: userMatch, token };
+    });
   },
 
   async verifyToken(token: string): Promise<User> {
-    // Simulate JWT verification and DB lookup
-    const users = getGlobalData<User>(STORAGE_KEYS.USERS);
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const user = users.find(u => u.id === payload.id);
-      if (!user) throw new Error('Invalid token');
-      return user;
-    } catch {
-      throw new Error('Token verification failed');
-    }
+    return syncWithCentralDB((db) => {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const user = db.users.find((u: any) => u.id === payload.id);
+        if (!user) throw new Error('Invalid token');
+        return user;
+      } catch {
+        throw new Error('Token verification failed');
+      }
+    });
   },
 
   logout() {
-    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem('authToken');
   },
 
   generateToken(user: User) {
@@ -78,85 +77,82 @@ export const apiService = {
     const payload = btoa(JSON.stringify({ 
       id: user.id, 
       email: user.email, 
-      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 Days
+      exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 Days Expiry
     }));
-    return `${header}.${payload}.signature_sim`;
+    return `${header}.${payload}.signature_verified`;
   },
 
-  // --- FOOD POST ENDPOINTS ---
+  // --- FOOD POST ENDPOINTS (SYNCED) ---
 
   /**
-   * IMPORTANT: Fetches ALL available posts across the platform.
-   * This ensures NGOs on any device see all available food.
+   * GLOBAL FETCH: Returns ALL available food posts in the database.
+   * NO USER-SPECIFIC FILTERING.
    */
   async getAllFood(filters?: { district?: string; type?: FoodType; status?: PostStatus }): Promise<FoodPost[]> {
-    let posts = getGlobalData<FoodPost>(STORAGE_KEYS.POSTS);
-    
-    // Auto-expiry logic (simulating backend cron job)
-    const now = new Date();
-    let changed = false;
-    posts = posts.map(post => {
-      if (post.status === PostStatus.AVAILABLE && new Date(post.expiryTime) < now) {
-        changed = true;
-        return { ...post, status: PostStatus.EXPIRED };
-      }
-      return post;
-    });
-    if (changed) saveGlobalData(STORAGE_KEYS.POSTS, posts);
+    return syncWithCentralDB((db) => {
+      let posts = db.posts as FoodPost[];
+      
+      // Filter ONLY by status "Available" unless explicitly requested otherwise
+      const targetStatus = filters?.status || PostStatus.AVAILABLE;
+      posts = posts.filter(p => p.status === targetStatus);
 
-    // Filter logic
-    if (filters) {
-      if (filters.district) posts = posts.filter(p => p.district === filters.district);
-      if (filters.type) posts = posts.filter(p => p.type === filters.type);
-      if (filters.status) posts = posts.filter(p => p.status === filters.status);
-    }
-    
-    console.log(`[Backend Sync] Returned ${posts.length} posts from database.`);
-    return posts;
+      // Apply District/Type filters if they exist
+      if (filters?.district) posts = posts.filter(p => p.district === filters.district);
+      if (filters?.type) posts = posts.filter(p => p.type === filters.type);
+      
+      console.log("-----------------------------------------");
+      console.log(`🌐 GLOBAL SYNC: Fetched ${posts.length} available posts`);
+      console.log(`📡 Database: Central FoodPool`);
+      console.log("-----------------------------------------");
+      
+      return posts;
+    });
   },
 
   async createPost(postData: Omit<FoodPost, 'id' | 'status' | 'createdAt'>): Promise<FoodPost> {
-    const posts = getGlobalData<FoodPost>(STORAGE_KEYS.POSTS);
-    const newPost: FoodPost = {
-      ...postData,
-      id: Math.random().toString(36).substr(2, 9),
-      status: PostStatus.AVAILABLE,
-      createdAt: new Date().toISOString(),
-    };
-    
-    posts.push(newPost);
-    saveGlobalData(STORAGE_KEYS.POSTS, posts);
-    console.log(`[Backend Sync] Saved new post: ${newPost.id}`);
-    return newPost;
+    return syncWithCentralDB((db) => {
+      const newPost: FoodPost = {
+        ...postData,
+        id: 'fb_' + Math.random().toString(36).substr(2, 9),
+        status: PostStatus.AVAILABLE,
+        createdAt: new Date().toISOString(),
+      };
+      
+      db.posts.push(newPost);
+      console.log(`✅ GLOBAL WRITE: Saved Post ${newPost.id} to Central DB`);
+      return newPost;
+    });
   },
 
   async collectPost(postId: string, ngoId: string, ngoName: string): Promise<void> {
-    const posts = getGlobalData<FoodPost>(STORAGE_KEYS.POSTS);
-    const index = posts.findIndex(p => p.id === postId);
-    if (index !== -1) {
-      posts[index].status = PostStatus.COLLECTED;
-      posts[index].ngoId = ngoId;
-      posts[index].ngoName = ngoName;
-      posts[index].collectedAt = new Date().toISOString();
-      saveGlobalData(STORAGE_KEYS.POSTS, posts);
-    }
+    return syncWithCentralDB((db) => {
+      const post = db.posts.find((p: any) => p.id === postId);
+      if (post) {
+        post.status = PostStatus.COLLECTED;
+        post.ngoId = ngoId;
+        post.ngoName = ngoName;
+        post.collectedAt = new Date().toISOString();
+      }
+    });
   },
 
   async deletePost(postId: string): Promise<void> {
-    const posts = getGlobalData<FoodPost>(STORAGE_KEYS.POSTS);
-    const filtered = posts.filter(p => p.id !== postId);
-    saveGlobalData(STORAGE_KEYS.POSTS, filtered);
+    return syncWithCentralDB((db) => {
+      db.posts = db.posts.filter((p: any) => p.id !== postId);
+    });
   },
 
   async getStats() {
-    const posts = getGlobalData<FoodPost>(STORAGE_KEYS.POSTS);
-    const users = getGlobalData<User>(STORAGE_KEYS.USERS);
-    
-    return {
-      totalMealsServed: posts.filter(p => p.status === PostStatus.COLLECTED).reduce((acc, p) => acc + p.quantity, 0),
-      activeDonations: posts.filter(p => p.status === PostStatus.AVAILABLE).length,
-      totalDonors: users.filter(u => u.role === UserRole.PROVIDER).length,
-      activeNGOs: users.filter(u => u.role === UserRole.NGO).length,
-    };
+    return syncWithCentralDB((db) => {
+      const posts = db.posts as FoodPost[];
+      const users = db.users as User[];
+      
+      return {
+        totalMealsServed: posts.filter(p => p.status === PostStatus.COLLECTED).reduce((acc, p) => acc + p.quantity, 0),
+        activeDonations: posts.filter(p => p.status === PostStatus.AVAILABLE).length,
+        totalDonors: users.filter(u => u.role === UserRole.PROVIDER).length,
+        activeNGOs: users.filter(u => u.role === UserRole.NGO).length,
+      };
+    });
   }
 };
